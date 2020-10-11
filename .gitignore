@@ -4,3 +4,4 @@ csem
 *.o
 y.output
 y.tab.h
+cgram.c
