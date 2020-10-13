@@ -1,8 +1,37 @@
 # include <stdio.h>
+# include <strings.h>
 # include "cc.h"
 # include "semutil.h"
 # include "sem.h"
 # include "sym.h"
+
+extern int level;
+
+void ie(struct id_entry * i) {
+  if (i != NULL) {
+    printf("link[%d] name[%s] type[%d] blevel[%d] defined[%d] width[%d] scope[%d] offset[%d]\n",
+        i->i_link,
+        i->i_name,
+        i->i_type,
+        i->i_blevel,
+        i->i_defined,
+        i->i_width,
+        i->i_scope,
+        i->i_offset
+        );
+  } else {
+    printf("id_entry is null\n");
+  }
+}
+
+void iea(struct id_entry * i) {
+  ie(i);
+  struct id_entry * n = i->i_link;
+  while(n != NULL) {
+	ie(n);
+	n = n->i_link;
+  }
+}
 
 /*
  * backpatch - backpatch list of quadruples starting at p with k
@@ -17,7 +46,8 @@ void backpatch(struct sem_rec *p, int k)
  */
 void bgnstmt()
 {
-   fprintf(stderr, "sem: bgnstmt not implemented\n");
+   extern int lineno;
+   printf("bgnstmt %d\n",lineno);
 }
 
 /*
@@ -162,8 +192,10 @@ void endloopscope(int m)
  */
 struct sem_rec *exprs(struct sem_rec *l, struct sem_rec *e)
 {
-   fprintf(stderr, "sem: exprs not implemented\n");
-   return ((struct sem_rec *) NULL);
+   
+   l->back.s_link=e;
+   l->back.s_true=e; 
+   return l;
 }
 
 /*
@@ -171,7 +203,20 @@ struct sem_rec *exprs(struct sem_rec *l, struct sem_rec *e)
  */
 void fhead(struct id_entry *p)
 {
-   fprintf(stderr, "sem: fhead not implemented\n");
+   extern char formaltypes[];
+   extern char localtypes[];
+
+   printf("func %s\n",p->i_name);
+   char * t = formaltypes + p->i_offset;
+   int i;
+   for (i = 0; i < strlen(t); i++) {
+     printf("formal %d\n",(t[i] == 'i') ? 4 : 8); 
+   }
+   char * l = localtypes + p->i_offset;
+   for (i = 0; i < strlen(l); i++) {
+     printf("localloc %d\n",(l[i] == 'i') ? 4 : 8);
+   }
+   //iea(p);   
 }
 
 /*
@@ -179,15 +224,14 @@ void fhead(struct id_entry *p)
  */
 struct id_entry *fname(int t, char *id)
 {
-   /*struct id_entry *p;
-   extern int level;
-   p = lookup(id, t);
+   struct id_entry *p;
+   p = install(id,0);
    p->i_type = t;
+   p->i_scope = GLOBAL;
    p->i_defined = 1;
-   p->i_scope = LOCAL;
-   printf("func %s\n",p->i_name);
-   return p;*/
-   return ((struct id_entry *)NULL);
+   enterblock();
+   return p; 
+   //return ((struct id_entry *)NULL);
 }
 
 /*
@@ -195,7 +239,7 @@ struct id_entry *fname(int t, char *id)
  */
 void ftail()
 {
-   fprintf(stderr, "sem: ftail not implemented\n");
+  leaveblock();
 }
 
 /*
@@ -203,8 +247,22 @@ void ftail()
  */
 struct sem_rec *id(char *x)
 {
-   fprintf(stderr, "sem: id not implemented\n");
-   return ((struct sem_rec *) NULL);
+   struct id_entry * i = lookup(x,level);
+   char * scope;
+   int t = nexttemp();
+   switch (i->i_scope) {
+     case GLOBAL:
+       scope = "global";
+       break;
+     case PARAM:
+       scope = "param";
+       break;
+     case LOCAL:
+       scope = "local";
+       break;
+   }
+   printf("t%d := %s %d\n",t,scope,i->i_offset);
+   return node(t,T_ADDR+i->i_type,NULL,NULL);
 }
 
 /*
@@ -248,8 +306,19 @@ struct sem_rec *n()
  */
 struct sem_rec *op1(char *op, struct sem_rec *y)
 {
-   fprintf(stderr, "sem: op1 not implemented\n");
-   return ((struct sem_rec *) NULL);
+  int t = nexttemp();
+  int b = y->s_mode & ~(T_ADDR);
+  char c;
+  switch (b) {
+    case T_INT:
+      c = 'i';
+    break;
+    case T_DOUBLE:
+      c = 'f';
+    break;
+  }
+  printf("t%d := %s%c t%d\n",t,op,c,y->s_place);
+  return node(t,b,NULL,NULL);  
 }
 
 /*
@@ -302,6 +371,7 @@ void startloopscope()
  */
 struct sem_rec *string(char *s)
 {
-   fprintf(stderr, "sem: string not implemented\n");
-   return ((struct sem_rec *) NULL);
+   int t = nexttemp();
+   printf("t%d := %s\n",t,s);
+   return node(t,T_STR,NULL,NULL);
 }
