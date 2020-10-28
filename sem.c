@@ -16,7 +16,10 @@ int looplevel = 0;
  */
 void backpatch(struct sem_rec *p, int k)
 {
-   fprintf(stderr, "sem: backpatch not implemented\n");
+   while(p !=NULL) {
+      printf("B%d=L%d\n",++numgotos,k);
+      p = p->back.s_link;
+   }
 }
 
 /*
@@ -129,7 +132,10 @@ void dodo(int m1, int m2, struct sem_rec *e, int m3)
 void dofor(int m1, struct sem_rec *e2, int m2, struct sem_rec *n1,
            int m3, struct sem_rec *n2, int m4)
 {
-   fprintf(stderr, "sem: dofor not implemented\n");
+   backpatch(e2->back.s_true,m3);
+   backpatch(e2->s_false,m4);
+   backpatch(n1,m1);
+   backpatch(n2,m2);   
 }
 
 /*
@@ -145,8 +151,8 @@ void dogoto(char *id)
  */
 void doif(struct sem_rec *e, int m1, int m2)
 {
-   printf("B%d=L%d\n",++numgotos,m1);
-   printf("B%d=L%d\n",++numgotos,m2);
+   backpatch(e->back.s_true,m1);
+   backpatch(e->s_false,m2);
 }
 
 /*
@@ -265,9 +271,7 @@ struct sem_rec *id(char *x)
  */
 struct sem_rec *sindex(struct sem_rec *x, struct sem_rec *i)
 {
-    //gen
-   fprintf(stderr, "sem: sindex not implemented\n");
-   return ((struct sem_rec *) NULL);
+   return gen("[]",x,i,x->s_mode & ~T_ARRAY);
 }
 
 /*
@@ -314,19 +318,19 @@ struct sem_rec * cast(struct sem_rec * y, int m) {
 
 struct sem_rec *gen(char * op, struct sem_rec * x, struct sem_rec * y, int t) {
    if (strcmp("arg",op) == 0 || strcmp("ret",op) == 0) {
-      printf("%s%c t%d\n",op,(y->s_mode & T_DOUBLE) ? 'f' : 'i', y->s_place);      
-      return node(currtemp(),y->s_mode,NULL,NULL);
+      printf("%s%c t%d\n",op,(t & T_DOUBLE) ? 'f' : 'i', y->s_place);      
+      return node(currtemp(),t,NULL,NULL);
    } 
    printf("t%d := ",nexttemp());
    if (strcmp("f",op) == 0) {
-      printf("f%c t%d %d\n",(y->s_mode & T_DOUBLE) ? 'f' : 'i',x->s_place,y->s_place);
-      return node(currtemp(),y->s_mode,NULL,NULL);
+      printf("f%c t%d %d\n",(t & T_DOUBLE) ? 'f' : 'i',x->s_place,y->s_place);
+      return node(currtemp(),t,NULL,NULL);
    }
    if (x != NULL) {
       printf("t%d ", x->s_place);
    }
-   printf("%s%c t%d\n",op,(y->s_mode & T_DOUBLE) ? 'f' : 'i',y->s_place);
-   return node(currtemp(),y->s_mode,NULL,NULL);
+   printf("%s%c t%d\n",op,(t & T_DOUBLE) ? 'f' : 'i',y->s_place);
+   return node(currtemp(),t,NULL,NULL);
 }
 
 /*
