@@ -10,6 +10,14 @@ int numblabels = 0;
 int numlabels = 0;
 int numgotos = 0;
 int looplevel = 0;
+int quadgen = 1;
+struct loopscope {
+    struct sem_rec *breaks;
+    struct sem_rec *conts;
+};
+struct loopscope scopestk[50];
+struct loopscope *looptop;
+int laststmt = 0;
 
 /*
  * backpatch - backpatch list of quadruples starting at p with k
@@ -17,7 +25,8 @@ int looplevel = 0;
 void backpatch(struct sem_rec *p, int k)
 {
    while(p !=NULL) {
-      printf("B%d=L%d\n",++numgotos,k);
+      printf("B%d=L%d\n",p->s_place,k);
+      //++numgotos;
       p = p->back.s_link;
    }
 }
@@ -29,7 +38,10 @@ void bgnstmt()
 {
    extern int lineno;
    skip();
-   printf("bgnstmt %d\n",lineno);
+   if (laststmt != lineno) {
+      laststmt = lineno;
+      printf("bgnstmt %d\n",lineno);
+   }
 }
 
 /*
@@ -123,7 +135,10 @@ void docontinue()
  */
 void dodo(int m1, int m2, struct sem_rec *e, int m3)
 {
-   fprintf(stderr, "sem: dodo not implemented\n");
+   backpatch(e->back.s_true,m1);
+   backpatch(e->s_false,m3);
+   //backpatch(NULL,m2);
+   endloopscope(m3);
 }
 
 /*
@@ -135,7 +150,8 @@ void dofor(int m1, struct sem_rec *e2, int m2, struct sem_rec *n1,
    backpatch(e2->back.s_true,m3);
    backpatch(e2->s_false,m4);
    backpatch(n1,m1);
-   backpatch(n2,m2);   
+   backpatch(n2,m2);
+   endloopscope(m4);
 }
 
 /*
@@ -161,7 +177,9 @@ void doif(struct sem_rec *e, int m1, int m2)
 void doifelse(struct sem_rec *e, int m1, struct sem_rec *n,
                          int m2, int m3)
 {
-   fprintf(stderr, "sem: doifelse not implemented\n");
+   backpatch(e->back.s_true,m1);
+   backpatch(e->s_false,m2);
+   backpatch(n,m3);
 }
 
 /*
@@ -178,7 +196,11 @@ void doret(struct sem_rec *e)
 void dowhile(int m1, struct sem_rec *e, int m2, struct sem_rec *n,
              int m3)
 {
-   fprintf(stderr, "sem: dowhile not implemented\n");
+   backpatch(e->back.s_true,m2);
+   backpatch(e->s_false,m3);
+   backpatch(n,m1);
+   //breaks? continues?
+   endloopscope(m3);
 }
 
 /*
@@ -186,7 +208,9 @@ void dowhile(int m1, struct sem_rec *e, int m2, struct sem_rec *n,
  */
 void endloopscope(int m)
 {
-   fprintf(stderr, "sem: endloopscope not implemented\n");
+   //backpatch(looptop,m);
+   //breaks? continues?
+   looplevel -= 1;
 }
 
 /*
@@ -204,16 +228,18 @@ void fhead(struct id_entry *p)
 {
    extern char formaltypes[];
    extern char localtypes[];
+   extern formalnum;
+   extern localnum;
 
    printf("func %s\n",p->i_name);
    char * t = formaltypes + p->i_offset;
    int i;
-   for (i = 0; i < strlen(t); i++) {
-     printf("formal %d\n",(t[i] == 'i') ? 4 : 8); 
+   for (i = 0; i < formalnum; i++) {
+     printf("formal %d\n",(formaltypes[i] == 'i') ? 4 : 8); 
    }
    char * l = localtypes + p->i_offset;
-   for (i = 0; i < strlen(l); i++) {
-     printf("localloc %d\n",(l[i] == 'i') ? 4 : 8);
+   for (i = 0; i < localnum; i++) {
+     printf("localloc %d\n",(localtypes[i] == 'i') ? 4 : 8);
    }
 }
 
@@ -222,11 +248,15 @@ void fhead(struct id_entry *p)
  */
 struct id_entry *fname(int t, char *id)
 {
+   extern formalnum;
+   extern localnum;
    struct id_entry *p;
    p = install(id,0);
    p->i_type = t;
    p->i_scope = GLOBAL;
    p->i_defined = 1;
+   formalnum = 0;
+   localnum = 0;
    enterblock();
    return p;
 }
@@ -246,6 +276,7 @@ void ftail()
 struct sem_rec *id(char *x)
 {
    extern int level;
+   quadgen = 1;
    struct id_entry * p = lookup(x, 0);
    if (p  != NULL && p->i_blevel <= level) {
      switch (p->i_scope) {
@@ -263,7 +294,7 @@ struct sem_rec *id(char *x)
    } else {
      printf("t%d := global %s\n",nexttemp(),x);
      return node(currtemp(),T_PROC,NULL,NULL);
-   }
+   }   
 }
 
 /*
@@ -292,7 +323,10 @@ int m()
       printf("too many labels\n");
       exit(1);
    }
-   printf("label L%d\n", ++numlabels);
+   if (quadgen == 1) {
+      printf("label L%d\n", ++numlabels);
+   }
+   quadgen = 0;
    return numlabels;
 }
 
@@ -301,9 +335,9 @@ int m()
  */
 struct sem_rec *n()
 {
-   int l = ++numblabels;
-   printf("br B%d\n", l);
-   return node(l,0,NULL,NULL);
+   quadgen = 1;
+   printf("br B%d\n", ++numblabels);
+   return node(numblabels,0,NULL,NULL);
 }
 
 struct sem_rec * cast(struct sem_rec * y, int m) {
