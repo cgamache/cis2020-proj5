@@ -11,6 +11,7 @@ int numlabels = 0;
 int numgotos = 0;
 int looplevel = 0;
 int quadgen = 1;
+int functype = 0;
 struct loopscope {
     struct sem_rec *breaks;
     struct sem_rec *conts;
@@ -70,8 +71,8 @@ struct sem_rec *call(char *f, struct sem_rec *args)
  */
 struct sem_rec *ccand(struct sem_rec *e1, int m, struct sem_rec *e2)
 {
-   fprintf(stderr, "sem: ccand not implemented\n");
-   return ((struct sem_rec *) NULL);
+   backpatch(e1->back.s_true,m);
+   return node(NULL,NULL,e2->back.s_true,merge(e1->s_false, e2->s_false));
 }
 
 /*
@@ -91,8 +92,7 @@ struct sem_rec *ccexpr(struct sem_rec *e)
  */
 struct sem_rec *ccnot(struct sem_rec *e)
 {
-   fprintf(stderr, "sem: ccnot not implemented\n");
-   return ((struct sem_rec *) NULL);
+   return node(NULL,NULL,e->s_false,e->back.s_true);
 }
 
 /*
@@ -100,8 +100,8 @@ struct sem_rec *ccnot(struct sem_rec *e)
  */
 struct sem_rec *ccor(struct sem_rec *e1, int m, struct sem_rec *e2)
 {
-   fprintf(stderr, "sem: ccor not implemented\n");
-   return ((struct sem_rec *) NULL);
+   backpatch(e1->s_false, m);
+   return node(NULL,NULL,merge(e1->back.s_true,e2->back.s_true),e2->s_false);
 }
 
 /*
@@ -187,7 +187,8 @@ void doifelse(struct sem_rec *e, int m1, struct sem_rec *n,
  */
 void doret(struct sem_rec *e)
 {
-   gen("ret",NULL,e,e->s_mode);
+   e = cast(e,functype);
+   gen("ret",NULL,e,functype);
 }
 
 /*
@@ -257,6 +258,7 @@ struct id_entry *fname(int t, char *id)
    p->i_defined = 1;
    formalnum = 0;
    localnum = 0;
+   functype = t;
    enterblock();
    return p;
 }
@@ -393,6 +395,7 @@ struct sem_rec *op2(char *op, struct sem_rec *x, struct sem_rec *y)
 struct sem_rec *opb(char *op, struct sem_rec *x, struct sem_rec *y)
 {
    fprintf(stderr, "sem: opb not implemented\n");
+
    return ((struct sem_rec *) NULL);
 }
 

@@ -1,4 +1,4 @@
-int nest(int x) {
+double nest(int x) {
   int i;
   int j;
   int k;
@@ -8,8 +8,8 @@ int nest(int x) {
       if (j % 2 == 0) {
         k = k - i + j;
       } else {
-        while (k < 50) {
-          k = k + i + j;
+        while (k < 50 || k > 55) {
+          k = (k + i + j);
         }        
       }
       
@@ -17,7 +17,7 @@ int nest(int x) {
   }
   do {
     k -= 2;
-  } while (k > 0);
+  } while (k > 0 && !k);
   return k;
 }
 
