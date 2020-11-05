@@ -12,6 +12,7 @@ int numgotos = 0;
 int looplevel = 0;
 int quadgen = 1;
 int functype = 0;
+int relexpr = 1;
 struct loopscope {
     struct sem_rec *breaks;
     struct sem_rec *conts;
@@ -80,8 +81,15 @@ struct sem_rec *ccand(struct sem_rec *e1, int m, struct sem_rec *e2)
  */
 struct sem_rec *ccexpr(struct sem_rec *e)
 {
+   struct sem_rec * t1;
+   if (relexpr == 0) {
+      t1 = gen("!=",e,cast(con("0"),1),1);
+   } else {
+      t1 = e;
+      relexpr = 0;
+   }   
    int l1 = ++numblabels;
-   printf("bt t%d B%d\n", e->s_place, l1);
+   printf("bt t%d B%d\n", t1->s_place, l1);
    int l2 = ++numblabels;
    printf("br B%d\n", l2);
    return node(0,0,node(l1,0,NULL,NULL),node(l2,0,NULL,NULL));
@@ -109,6 +117,7 @@ struct sem_rec *ccor(struct sem_rec *e1, int m, struct sem_rec *e2)
  */
 struct sem_rec *con(char *x)
 {
+   quadgen = 1;
    printf("t%d := %s\n",nexttemp(),x);
    //todo determine doubleness?
    return node(currtemp(),T_INT,NULL,NULL);
@@ -394,9 +403,10 @@ struct sem_rec *op2(char *op, struct sem_rec *x, struct sem_rec *y)
  */
 struct sem_rec *opb(char *op, struct sem_rec *x, struct sem_rec *y)
 {
-   fprintf(stderr, "sem: opb not implemented\n");
-
-   return ((struct sem_rec *) NULL);
+   int m = (x->s_mode > y->s_mode) ? x->s_mode : y->s_mode;
+   x = cast(x,1);
+   y = cast(y,1);
+   return gen(op,x,y,1);
 }
 
 /*
@@ -407,6 +417,7 @@ struct sem_rec *rel(char *op, struct sem_rec *x, struct sem_rec *y)
    int m = (x->s_mode > y->s_mode) ? x->s_mode : y->s_mode;
    x = cast(x,m);
    y = cast(y,m);
+   relexpr = 1;
    return ccexpr(gen(op,x,y,x->s_mode));
 }
 
