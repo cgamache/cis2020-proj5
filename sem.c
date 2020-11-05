@@ -128,7 +128,7 @@ struct sem_rec *con(char *x)
  */
 void dobreak()
 {
-   fprintf(stderr, "sem: dobreak not implemented\n");
+   looptop->breaks = merge(NULL,n());
 }
 
 /*
@@ -136,7 +136,8 @@ void dobreak()
  */
 void docontinue()
 {
-   fprintf(stderr, "sem: docontinue not implemented\n");
+   looptop->conts = merge(NULL,n());
+   //fprintf(stderr, "sem: docontinue not implemented\n");
 }
 
 /*
@@ -146,7 +147,7 @@ void dodo(int m1, int m2, struct sem_rec *e, int m3)
 {
    backpatch(e->back.s_true,m1);
    backpatch(e->s_false,m3);
-   //backpatch(NULL,m2);
+   backpatch(looptop->conts,m2); //
    endloopscope(m3);
 }
 
@@ -158,6 +159,7 @@ void dofor(int m1, struct sem_rec *e2, int m2, struct sem_rec *n1,
 {
    backpatch(e2->back.s_true,m3);
    backpatch(e2->s_false,m4);
+   backpatch(looptop->conts,m2);
    backpatch(n1,m1);
    backpatch(n2,m2);
    endloopscope(m4);
@@ -209,7 +211,7 @@ void dowhile(int m1, struct sem_rec *e, int m2, struct sem_rec *n,
    backpatch(e->back.s_true,m2);
    backpatch(e->s_false,m3);
    backpatch(n,m1);
-   //breaks? continues?
+   backpatch(looptop->conts,m2);
    endloopscope(m3);
 }
 
@@ -220,7 +222,9 @@ void endloopscope(int m)
 {
    //backpatch(looptop,m);
    //breaks? continues?
+   backpatch(looptop->breaks,m);
    looplevel -= 1;
+   looptop = &scopestk[looplevel - 1];
 }
 
 /*
@@ -451,6 +455,7 @@ void startloopscope()
       exit(1);
    }
    looplevel += 1;
+   looptop = &scopestk[looplevel - 1];
 }
 
 /*
