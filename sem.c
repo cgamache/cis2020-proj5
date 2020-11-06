@@ -8,11 +8,17 @@
 
 int numblabels = 0;
 int numlabels = 0;
+int numlabelids = 0;
 int numgotos = 0;
 int looplevel = 0;
 int quadgen = 1;
 int functype = 0;
 int relexpr = 1;
+struct labelnode {
+    char *id;
+    int place;
+};
+struct labelnode labels[50];
 struct loopscope {
     struct sem_rec *breaks;
     struct sem_rec *conts;
@@ -28,7 +34,6 @@ void backpatch(struct sem_rec *p, int k)
 {
    while(p !=NULL) {
       printf("B%d=L%d\n",p->s_place,k);
-      //++numgotos;
       p = p->back.s_link;
    }
 }
@@ -119,7 +124,6 @@ struct sem_rec *con(char *x)
 {
    quadgen = 1;
    printf("t%d := %s\n",nexttemp(),x);
-   //todo determine doubleness?
    return node(currtemp(),T_INT,NULL,NULL);
 }
 
@@ -137,7 +141,6 @@ void dobreak()
 void docontinue()
 {
    looptop->conts = merge(NULL,n());
-   //fprintf(stderr, "sem: docontinue not implemented\n");
 }
 
 /*
@@ -170,7 +173,13 @@ void dofor(int m1, struct sem_rec *e2, int m2, struct sem_rec *n1,
  */
 void dogoto(char *id)
 {
-   fprintf(stderr, "sem: dogoto not implemented\n");
+   int i;
+   for (i = 0; i < 50; i++) {
+      if (strcmp(labels[i].id,id) == 0) {
+         break;
+      }
+   }
+   printf("br L%d\n", labels[i].place);
 }
 
 /*
@@ -220,8 +229,6 @@ void dowhile(int m1, struct sem_rec *e, int m2, struct sem_rec *n,
  */
 void endloopscope(int m)
 {
-   //backpatch(looptop,m);
-   //breaks? continues?
    backpatch(looptop->breaks,m);
    looplevel -= 1;
    looptop = &scopestk[looplevel - 1];
@@ -325,8 +332,12 @@ struct sem_rec *sindex(struct sem_rec *x, struct sem_rec *i)
  */
 void labeldcl(char *id)
 {
-   /* you may assume the maximum number of C label declarations is 50 */
-   fprintf(stderr, "sem: labeldcl not implemented\n");
+   dclr(id, T_LBL, 0);
+   numlabels++;
+   printf("label L%d\n", numlabels);
+   labels[numlabelids].id = id;
+   labels[numlabelids].place = numlabels;   
+   numlabelids++;
 }
 
 /*
@@ -357,9 +368,7 @@ struct sem_rec *n()
 
 struct sem_rec * cast(struct sem_rec * y, int m) {
    if ((m & ~T_ADDR) > (y->s_mode & ~T_ADDR)) {      
-      //good place for gen?
-      printf("t%d := cv%c t%d\n",nexttemp(),(m & T_DOUBLE) ? 'f' : 'i',y->s_place);
-      return node(currtemp(),m,NULL,NULL);
+      return gen("cv",NULL,y,m);
    } else {
       return y;
    }
