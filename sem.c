@@ -249,6 +249,7 @@ void fhead(struct id_entry *p)
 {
    extern char formaltypes[];
    extern char localtypes[];
+   extern int localwidths[];
    extern formalnum;
    extern localnum;
 
@@ -260,7 +261,7 @@ void fhead(struct id_entry *p)
    }
    char * l = localtypes + p->i_offset;
    for (i = 0; i < localnum; i++) {
-     printf("localloc %d\n",(localtypes[i] == 'i') ? 4 : 8);
+     printf("localloc %d\n",((localtypes[i] == 'i') ? 4 : 8) * localwidths[i]);
    }
 }
 
@@ -300,23 +301,22 @@ struct sem_rec *id(char *x)
    extern int level;
    quadgen = 1;
    struct id_entry * p = lookup(x, 0);
-   if (p  != NULL && p->i_blevel <= level) {
-     switch (p->i_scope) {
-       case PARAM:
-         printf("t%d := param %d\n",nexttemp(),p->i_offset);
-         break;
-       case LOCAL:
-         printf("t%d := local %d\n",nexttemp(),p->i_offset);
-        break;
-       case GLOBAL:
-         printf("t%d := global %s\n",nexttemp(),x);
-        break;
-     }     
-     return node(currtemp(),T_ADDR | p->i_type,NULL,NULL);
-   } else {
-     printf("t%d := global %s\n",nexttemp(),x);
-     return node(currtemp(),T_PROC,NULL,NULL);
-   }   
+   if (p == NULL) {
+      yyerror("undeclared identifier");
+      p = install(x,-1);
+   }
+   switch (p->i_scope) {
+      case PARAM:
+      printf("t%d := param %d\n",nexttemp(),p->i_offset);
+      break;
+      case LOCAL:
+      printf("t%d := local %d\n",nexttemp(),p->i_offset);
+      break;
+      case GLOBAL:
+      printf("t%d := global %s\n",nexttemp(),x);
+      break;
+   }
+   return node(currtemp(),T_ADDR | p->i_type,NULL,NULL);
 }
 
 /*
