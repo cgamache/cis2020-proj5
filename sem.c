@@ -150,7 +150,7 @@ void dodo(int m1, int m2, struct sem_rec *e, int m3)
 {
    backpatch(e->back.s_true,m1);
    backpatch(e->s_false,m3);
-   backpatch(looptop->conts,m2); //
+   backpatch(looptop->conts,m2);
    endloopscope(m3);
 }
 
