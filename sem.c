@@ -13,12 +13,13 @@ int numgotos = 0;
 int looplevel = 0;
 int quadgen = 1;
 int functype = 0;
-int relexpr = 1;
+int relexpr = 0;
 struct labelnode {
     char *id;
     int place;
 };
 struct labelnode labels[50];
+struct labelnode gotos[50];
 struct loopscope {
     struct sem_rec *breaks;
     struct sem_rec *conts;
@@ -175,11 +176,18 @@ void dogoto(char *id)
 {
    int i;
    for (i = 0; i < 50; i++) {
+      if (labels[i].id == NULL) continue;
       if (strcmp(labels[i].id,id) == 0) {
-         break;
+         printf("br L%d\n", i);
+         return;
       }
    }
-   printf("br L%d\n", labels[i].place);
+   gotos[numgotos].id = id;
+   gotos[numgotos].place = numlabels;
+   numgotos += 1;
+   quadgen = 1;
+   printf("br B%d\n", numlabels);
+   
 }
 
 /*
@@ -220,7 +228,7 @@ void dowhile(int m1, struct sem_rec *e, int m2, struct sem_rec *n,
    backpatch(e->back.s_true,m2);
    backpatch(e->s_false,m3);
    backpatch(n,m1);
-   backpatch(looptop->conts,m2);
+   backpatch(looptop->conts,m1);
    endloopscope(m3);
 }
 
@@ -367,7 +375,7 @@ struct sem_rec *n()
 }
 
 struct sem_rec * cast(struct sem_rec * y, int m) {
-   if ((m & ~T_ADDR) > (y->s_mode & ~T_ADDR)) {      
+   if ((m & ~T_ADDR) != (y->s_mode & ~T_ADDR)) {      
       return gen("cv",NULL,y,m);
    } else {
       return y;
