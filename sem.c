@@ -173,22 +173,24 @@ void dofor(int m1, struct sem_rec *e2, int m2, struct sem_rec *n1,
  * dogoto - goto statement
  */
 void dogoto(char *id)
-{
+ {
    int i;
-   for (i = 0; i < 50; i++) {
-      if (labels[i].id == NULL) continue;
-      if (strcmp(labels[i].id,id) == 0) {
-         printf("br L%d\n", i);
+   quadgen = 1;
+   for (i = 0; i < numlabels; i++) {
+      if (labels[i].id != NULL && strcmp(labels[i].id,id) == 0) {
+         printf("br L%d\n", labels[i].place);
          return;
       }
    }
+   nexttemp();
+   numblabels += 1;
+   printf("br B%d\n", numblabels);
    gotos[numgotos].id = id;
-   gotos[numgotos].place = numlabels;
+   gotos[numgotos].place = numblabels;
    numgotos += 1;
-   quadgen = 1;
-   printf("br B%d\n", numlabels);
-   
 }
+
+
 
 /*
  * doif - one-arm if statement
@@ -340,12 +342,20 @@ struct sem_rec *sindex(struct sem_rec *x, struct sem_rec *i)
  */
 void labeldcl(char *id)
 {
+   int i;
    dclr(id, T_LBL, 0);
    numlabels++;
    printf("label L%d\n", numlabels);
    labels[numlabelids].id = id;
-   labels[numlabelids].place = numlabels;   
+   labels[numlabelids].place = numlabels;
    numlabelids++;
+   for (i = 0; i < numgotos; i++) {
+      if (id == gotos[i].id) {
+         nexttemp();
+         printf("B%d=L%d\n", gotos[i].place, numlabels);
+         gotos[i].place = 0;
+      }
+   }
 }
 
 /*
@@ -413,9 +423,7 @@ struct sem_rec *op1(char *op, struct sem_rec *y)
 struct sem_rec *op2(char *op, struct sem_rec *x, struct sem_rec *y)
 {
    int m = (x->s_mode > y->s_mode) ? x->s_mode : y->s_mode;
-   x = cast(x,m);
-   y = cast(y,m);
-   gen(op,x,y,m);
+   gen(op,cast(x,m),cast(y,m),m);
    return node(currtemp(),m,NULL,NULL);
 }
 
@@ -457,8 +465,9 @@ struct sem_rec *set(char *op, struct sem_rec *x, struct sem_rec *y)
       } else {
         z = x;
       }
-      y = op2(op, z, y);
-      return gen("=",x,y,y->s_mode);
+      z = op2(op, z, y);
+      z = cast(z,x->s_mode);
+      return gen("=",x,z,z->s_mode);
    }
 }
 
