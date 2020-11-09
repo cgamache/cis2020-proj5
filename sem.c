@@ -299,8 +299,14 @@ struct id_entry *fname(int t, char *id)
  */
 void ftail()
 {
-  leaveblock();
   printf("fend\n");
+  int i;
+  for (i = 0; i < numgotos; i++) {
+     if (gotos[i].place != 0) {
+        fprintf(stderr,"label %s referenced in goto, but never declared\n",gotos[i].id);
+     }
+  }
+  leaveblock();
 }
 
 /*
